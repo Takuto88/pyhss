@@ -2309,5 +2309,5 @@ class PyHSS_Push_CLR(Resource):
             return response_json
 
 if __name__ == '__main__':
-    apiService.run(debug=False, host='0.0.0.0', port=8080)
+    apiService.run(debug=False, host='127.0.0.1', port=8080)
 
