@@ -2922,7 +2922,7 @@ class Diameter:
             auth_data_item = avp_SIP_Item_Number + avp_SIP_Authentication_Scheme + avp_SIP_Authenticate + avp_SIP_Authorization + avp_Confidentialility_Key + avp_Integrity_Key
         else:
             # Result
-            avp += self.generate_avp(268, 40, 5012)
+            avp += self.generate_avp(268, 40, self.int_to_hex(5012, 4))
             response = self.generate_diameter_packet("01", "40", 303, 16777265,
                                                      packet_vars['hop-by-hop-identifier'],
                                                      packet_vars['end-to-end-identifier'],
