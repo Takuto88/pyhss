@@ -66,6 +66,7 @@ class Diameter:
                 {"commandCode": 282, "applicationId": 0, "flags": 80, "responseMethod": self.Answer_282, "failureResultCode": 5012 ,"requestAcronym": "DPR", "responseAcronym": "DPA", "requestName": "Disconnect Peer Request", "responseName": "Disconnect Peer Answer"},
                 {"commandCode": 300, "applicationId": 16777216, "responseMethod": self.Answer_16777216_300, "failureResultCode": 4100 ,"requestAcronym": "UAR", "responseAcronym": "UAA", "requestName": "User Authentication Request", "responseName": "User Authentication Answer"},
                 {"commandCode": 301, "applicationId": 16777216, "responseMethod": self.Answer_16777216_301, "failureResultCode": 4100 ,"requestAcronym": "SAR", "responseAcronym": "SAA", "requestName": "Server Assignment Request", "responseName": "Server Assignment Answer"},
+                {"commandCode": 301, "applicationId": 16777265, "responseMethod": self.Answer_16777265_301, "failureResultCode": 4100 ,"requestAcronym": "SAR", "responseAcronym": "SAA", "requestName": "Server Assignment Request", "responseName": "Server Assignment Answer"},
                 {"commandCode": 302, "applicationId": 16777216, "responseMethod": self.Answer_16777216_302, "failureResultCode": 4100 ,"requestAcronym": "LIR", "responseAcronym": "LIA", "requestName": "Location Information Request", "responseName": "Location Information Answer"},
                 {"commandCode": 303, "applicationId": 16777216, "responseMethod": self.Answer_16777216_303, "failureResultCode": 4100 ,"requestAcronym": "MAR", "responseAcronym": "MAA", "requestName": "Multimedia Authentication Request", "responseName": "Multimedia Authentication Answer"},
                 {"commandCode": 303, "applicationId": 16777265, "responseMethod": self.Answer_16777265_303, "failureResultCode": 4100 ,"requestAcronym": "MAR", "responseAcronym": "MAA", "requestName": "Multimedia Authentication Request", "responseName": "Multimedia Authentication Answer"},
@@ -2609,7 +2610,70 @@ class Diameter:
         avp += self.generate_avp(268, 40, self.int_to_hex(2001, 4))                                 #Result Code (DIAMETER_SUCCESS (2001))
 
         response = self.generate_diameter_packet("01", "40", 301, 16777216, packet_vars['hop-by-hop-identifier'], packet_vars['end-to-end-identifier'], avp)     #Generate Diameter packet
-        return response    
+        return response
+
+
+    def Answer_16777265_301(self, packet_vars, avps):
+        avp = ''  # Initiate empty var AVP                                                                                           #Session-ID
+        session_id = self.get_avp_data(avps, 263)[0]  # Get Session-ID
+        avp += self.generate_avp(263, 40, session_id)  # Set session ID to received session ID
+        avp += self.generate_avp(264, 40, self.OriginHost)  # Origin Host
+        avp += self.generate_avp(296, 40, self.OriginRealm)  # Origin Realm
+        avp += self.generate_avp(277, 40, "00000001")  # Auth-Session-State (No state maintained)
+
+        avp += self.generate_avp(260, 40,
+                                 "0000010a4000000c000028af000001024000000c01000031")  # Vendor-Specific-Application-ID for Cx
+
+        OriginHost = self.get_avp_data(avps, 264)[0]  # Get OriginHost from AVP
+        OriginHost = binascii.unhexlify(OriginHost).decode('utf-8')  # Format it
+
+        OriginRealm = self.get_avp_data(avps, 296)[0]  # Get OriginRealm from AVP
+        OriginRealm = binascii.unhexlify(OriginRealm).decode('utf-8')  # Format it
+
+        # Find Remote Peer we need to address CLRs through
+        try:  # Check if we have a record-route set as that's where we'll need to send the response
+            remote_peer = self.get_avp_data(avps, 282)[-1]  # Get first record-route header
+            remote_peer = binascii.unhexlify(remote_peer).decode('utf-8')  # Format it
+        except:  # If we don't have a record-route set, we'll send the response to the OriginHost
+            remote_peer = OriginHost
+        self.logTool.log(service='HSS', level='debug',
+                         message="[diameter.py] [Answer_16777216_301] [SAR] Remote Peer is " + str(remote_peer),
+                         redisClient=self.redisMessaging)
+
+        try:
+            self.logTool.log(service='HSS', level='debug', message="Checking if username present",
+                             redisClient=self.redisMessaging)
+            username = self.get_avp_data(avps, 601)[0]
+            imsi = username
+        except Exception as E:
+            self.logTool.log(service='HSS', level='debug', message="Threw Exception: " + str(E),
+                             redisClient=self.redisMessaging)
+            self.logTool.log(service='HSS', level='debug',
+                             message=f"No known MSISDN or IMSI in Answer_16777216_301()",
+                             redisClient=self.redisMessaging)
+            result_code = 5005
+            # Experimental Result AVP
+            avp_experimental_result = ''
+            avp_experimental_result += self.generate_vendor_avp(266, 40, 10415, '')  # AVP Vendor ID
+            avp_experimental_result += self.generate_avp(298, 40, self.int_to_hex(result_code,
+                                                                                  4))  # AVP Experimental-Result-Code
+            avp += self.generate_avp(297, 40, avp_experimental_result)  # AVP Experimental-Result(297)
+            response = self.generate_diameter_packet("01", "40", 301, 16777217,
+                                                     packet_vars['hop-by-hop-identifier'],
+                                                     packet_vars['end-to-end-identifier'],
+                                                     avp)  # Generate Diameter packet
+            return response
+
+        avp += self.generate_avp(1, 40, str(binascii.hexlify(str.encode(str(imsi))), 'ascii'))
+
+        # TODO: Maybe update serving APN?
+
+        avp += self.generate_avp(268, 40, self.int_to_hex(2001, 4))  # Result Code (DIAMETER_SUCCESS (2001))
+
+        response = self.generate_diameter_packet("01", "40", 301, 16777216, packet_vars['hop-by-hop-identifier'],
+                                                 packet_vars['end-to-end-identifier'],
+                                                 avp)  # Generate Diameter packet
+        return response
 
     #3GPP Cx Location Information Answer
     def Answer_16777216_302(self, packet_vars, avps):
