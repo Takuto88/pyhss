@@ -1425,7 +1425,7 @@ class Diameter:
         self.logTool.log(service='HSS', level='debug', message="Successfully Generated CEA", redisClient=self.redisMessaging)
         return response
 
-    #Device Watchdog Answer                                                 
+    #Device Watchdog Answer
     def Answer_280(self, packet_vars, avps): 
         avp = ''                                                                                    #Initiate empty var AVP 
         avp += self.generate_avp(268, 40, self.int_to_hex(2001, 4))                                           #Result Code (DIAMETER_SUCCESS (2001))
@@ -2799,9 +2799,6 @@ class Diameter:
 
         # 3GPP Cx Multimedia Authentication Answer
     def Answer_16777265_303(self, packet_vars, avps):
-        self.logTool.log(service='HSS', level='debug',
-                         message="Got MAR for public_identity : " + str(public_identity),
-                         redisClient=self.redisMessaging)
         username = self.get_avp_data(avps, 1)[0]
         username = binascii.unhexlify(username).decode('utf-8')
         imsi = username
