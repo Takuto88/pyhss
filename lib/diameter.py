@@ -2840,7 +2840,7 @@ class Diameter:
             experimental_result = experimental_result + self.generate_vendor_avp(266, 40, 10415, "")
             # Experimental Result (297)
             avp += self.generate_avp(297, 40, experimental_result)
-            response = self.generate_diameter_packet("01", "40", 303, 16777216,
+            response = self.generate_diameter_packet("01", "40", 303, 16777265,
                                                      packet_vars['hop-by-hop-identifier'],
                                                      packet_vars['end-to-end-identifier'],
                                                      avp)  # Generate Diameter packet
@@ -2868,7 +2868,7 @@ class Diameter:
                                                metricType='counter', metricAction='inc',
                                                metricValue=1.0,
                                                metricLabels={
-                                                   "diameter_application_id": 16777216,
+                                                   "diameter_application_id": 16777265,
                                                    "diameter_cmd_code": 302,
                                                    "event": "ReAuth",
                                                    "imsi_prefix": str(imsi[0:6])},
@@ -2927,7 +2927,7 @@ class Diameter:
             experimental_result = experimental_result + self.generate_vendor_avp(266, 40, 10415, "")
             # Experimental Result (297)
             avp += self.generate_avp(297, 40, experimental_result)
-            response = self.generate_diameter_packet("01", "40", 303, 16777216,
+            response = self.generate_diameter_packet("01", "40", 303, 16777265,
                                                      packet_vars['hop-by-hop-identifier'],
                                                      packet_vars['end-to-end-identifier'],
                                                      avp)  # Generate Diameter packet
@@ -2938,7 +2938,7 @@ class Diameter:
 
         avp += self.generate_avp(268, 40, "000007d1")  # DIAMETER_SUCCESS
 
-        response = self.generate_diameter_packet("01", "40", 303, 16777216, packet_vars['hop-by-hop-identifier'],
+        response = self.generate_diameter_packet("01", "40", 303, 16777265, packet_vars['hop-by-hop-identifier'],
                                                  packet_vars['end-to-end-identifier'],
                                                  avp)  # Generate Diameter packet
         return response
