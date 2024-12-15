@@ -319,7 +319,7 @@ class DiameterService:
                 if self.benchmarking:
                     self.diameterResponses += 1
             except Exception as e:
-                await(self.logTool.logAsync(service='Diameter', level='info', message=f"[Diameter] [writeOutboundData] [{coroutineUuid}] Connection closed for {clientAddress} on port {clientPort}, closing writer.{traceback.format_exc()}"))
+                await(self.logTool.logAsync(service='Diameter', level='info', message=f"[Diameter] [writeOutboundData] [{coroutineUuid}] Connection closed for {clientAddress} on port {clientPort}, closing writer. Error: {e} {traceback.format_exc()}"))
                 return False
 
     async def handleConnection(self, reader, writer):
