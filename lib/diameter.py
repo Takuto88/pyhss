@@ -2890,7 +2890,7 @@ class Diameter:
                          redisClient=self.redisMessaging)
         avp += self.generate_avp(1, 40, str(binascii.hexlify(str.encode(imsi)),'ascii'))                                    #Username
         # Determine Vectors to Generate
-        if auth_scheme != "EAP-AKA":
+        if auth_scheme == "EAP-AKA":
             self.logTool.log(service='HSS', level='debug', message="Generating EAP-AKA Auth Challenge",
                              redisClient=self.redisMessaging)
             vector_dict = self.database.Get_Vectors_AuC(subscriber_details['auc_id'], "sip_auth", plmn=plmn)
