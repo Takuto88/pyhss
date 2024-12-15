@@ -35,9 +35,6 @@ hss:
   #The maximum time to wait, in seconds, before disconnecting a client when no data is received.
   client_socket_timeout: 120
 
-  #The maximum time to wait, in seconds, before disconnecting a client when no data is received.
-  client_socket_timeout: 300
-
   #The maximum time to wait, in seconds, before discarding a diameter request.
   diameter_request_timeout: 3
 
