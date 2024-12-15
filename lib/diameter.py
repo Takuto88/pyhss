@@ -2888,8 +2888,7 @@ class Diameter:
 
         self.logTool.log(service='HSS', level='debug', message="IMSI is " + str(imsi),
                          redisClient=self.redisMessaging)
-        avp += self.generate_avp(1, 40, str(binascii.hexlify(str.encode(imsi, 'ascii'))))  # Username
-
+        avp += self.generate_avp(1, 40, str(binascii.hexlify(str.encode(imsi)),'ascii'))                                    #Username
         # Determine Vectors to Generate
         if auth_scheme != "EAP-AKA":
             self.logTool.log(service='HSS', level='debug', message="Generating EAP-AKA Auth Challenge",
