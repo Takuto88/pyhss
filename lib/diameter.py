@@ -2921,16 +2921,8 @@ class Diameter:
 
             auth_data_item = avp_SIP_Item_Number + avp_SIP_Authentication_Scheme + avp_SIP_Authenticate + avp_SIP_Authorization + avp_Confidentialility_Key + avp_Integrity_Key
         else:
-            experimental_result = self.generate_avp(298, 40, self.int_to_hex(5012,
-                                                                             4))  # Result Code (DIAMETER ERROR - Unable to comply)
-            experimental_result = experimental_result + self.generate_vendor_avp(266, 40, 10415, "")
-            # Experimental Result (297)
-            avp += self.generate_avp(297, 40, experimental_result)
-            response = self.generate_diameter_packet("01", "40", 303, 16777265,
-                                                     packet_vars['hop-by-hop-identifier'],
-                                                     packet_vars['end-to-end-identifier'],
-                                                     avp)  # Generate Diameter packet
-            return response
+            # Diameter error: unable to comply
+            return self.Respond_ResultCode(packet_vars, avp, 5012)
         avp += self.generate_vendor_avp(612, "c0", 10415, auth_data_item)  # 3GPP-SIP-Auth-Data-Item
 
         avp += self.generate_vendor_avp(607, "c0", 10415, "00000001")  # 3GPP-SIP-Number-Auth-Items
