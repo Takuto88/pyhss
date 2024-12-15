@@ -68,6 +68,7 @@ class Diameter:
                 {"commandCode": 301, "applicationId": 16777216, "responseMethod": self.Answer_16777216_301, "failureResultCode": 4100 ,"requestAcronym": "SAR", "responseAcronym": "SAA", "requestName": "Server Assignment Request", "responseName": "Server Assignment Answer"},
                 {"commandCode": 302, "applicationId": 16777216, "responseMethod": self.Answer_16777216_302, "failureResultCode": 4100 ,"requestAcronym": "LIR", "responseAcronym": "LIA", "requestName": "Location Information Request", "responseName": "Location Information Answer"},
                 {"commandCode": 303, "applicationId": 16777216, "responseMethod": self.Answer_16777216_303, "failureResultCode": 4100 ,"requestAcronym": "MAR", "responseAcronym": "MAA", "requestName": "Multimedia Authentication Request", "responseName": "Multimedia Authentication Answer"},
+                {"commandCode": 303, "applicationId": 16777265, "responseMethod": self.Answer_16777265_303, "failureResultCode": 4100 ,"requestAcronym": "MAR", "responseAcronym": "MAA", "requestName": "Multimedia Authentication Request", "responseName": "Multimedia Authentication Answer"},
                 {"commandCode": 306, "applicationId": 16777217, "responseMethod": self.Answer_16777217_306, "failureResultCode": 5001 ,"requestAcronym": "UDR", "responseAcronym": "UDA", "requestName": "User Data Request", "responseName": "User Data Answer"},
                 {"commandCode": 307, "applicationId": 16777217, "responseMethod": self.Answer_16777217_307, "failureResultCode": 5001 ,"requestAcronym": "PRUR", "responseAcronym": "PRUA", "requestName": "Profile Update Request", "responseName": "Profile Update Answer"},
                 {"commandCode": 265, "applicationId": 16777236, "responseMethod": self.Answer_16777236_265, "failureResultCode": 4100 ,"requestAcronym": "AAR", "responseAcronym": "AAA", "requestName": "AA Request", "responseName": "AA Answer"},
@@ -1410,7 +1411,9 @@ class Diameter:
         avp += self.generate_avp(260, 40, "000001024000000c" + format(int(16777251),"x").zfill(8) +  "0000010a4000000c000028af")      #Vendor-Specific-Application-ID (S6a)
         avp += self.generate_avp(265, 40, format(int(10415),"x").zfill(8))                               #Supported-Vendor-ID (3GPP)        
         avp += self.generate_avp(260, 40, "000001024000000c" + format(int(16777216),"x").zfill(8) +  "0000010a4000000c000028af")      #Vendor-Specific-Application-ID (Cx)
-        avp += self.generate_avp(265, 40, format(int(10415),"x").zfill(8))                               #Supported-Vendor-ID (3GPP)        
+        avp += self.generate_avp(265, 40, format(int(10415), "x").zfill(8))  # Supported-Vendor-ID (3GPP)
+        avp += self.generate_avp(260, 40, "000001024000000c" + format(int(16777265),"x").zfill(8) +  "0000010a4000000c000028af")      #Vendor-Specific-Application-ID (SWx)
+        avp += self.generate_avp(265, 40, format(int(10415),"x").zfill(8))                               #Supported-Vendor-ID (3GPP)
         avp += self.generate_avp(260, 40, "000001024000000c" + format(int(16777252),"x").zfill(8) +  "0000010a4000000c000028af")      #Vendor-Specific-Application-ID (S13)
         avp += self.generate_avp(265, 40, format(int(10415),"x").zfill(8))                               #Supported-Vendor-ID (3GPP)        
         avp += self.generate_avp(260, 40, "000001024000000c" + format(int(16777291),"x").zfill(8) +  "0000010a4000000c000028af")      #Vendor-Specific-Application-ID (SLh)
@@ -2800,6 +2803,155 @@ class Diameter:
         avp += self.generate_avp(268, 40, "000007d1")                                                   #DIAMETER_SUCCESS
         
         response = self.generate_diameter_packet("01", "40", 303, 16777216, packet_vars['hop-by-hop-identifier'], packet_vars['end-to-end-identifier'], avp)     #Generate Diameter packet
+        return response
+
+        # 3GPP Cx Multimedia Authentication Answer
+    def Answer_16777265_303(self, packet_vars, avps):
+        self.logTool.log(service='HSS', level='debug',
+                         message="Got MAR for public_identity : " + str(public_identity),
+                         redisClient=self.redisMessaging)
+        username = self.get_avp_data(avps, 1)[0]
+        username = binascii.unhexlify(username).decode('utf-8')
+        imsi = username
+        self.logTool.log(service='HSS', level='debug', message="Got MAR username: " + str(username),
+                         redisClient=self.redisMessaging)
+        auth_scheme = ''
+
+        avp = ''  # Initiate empty var AVP
+        session_id = self.get_avp_data(avps, 263)[0]  # Get Session-ID
+        avp += self.generate_avp(263, 40, session_id)  # Set session ID to received session ID
+        avp += self.generate_avp(260, 40,
+                                 "0000010a4000000c000028af000001024000000c01000031")  # Vendor-Specific-Application-ID for SWx
+        avp += self.generate_avp(277, 40, "00000001")  # Auth Session State
+        avp += self.generate_avp(264, 40, self.OriginHost)  # Origin Host
+        avp += self.generate_avp(296, 40, self.OriginRealm)  # Origin Realm
+
+        try:
+            subscriber_details = self.database.Get_Subscriber(imsi=imsi)  # Get subscriber details
+        except:
+            # Handle if the subscriber is not present in HSS return "DIAMETER_ERROR_USER_UNKNOWN"
+            self.logTool.log(service='HSS', level='debug',
+                             message="Subscriber " + str(imsi) + " unknown in HSS for MAA",
+                             redisClient=self.redisMessaging)
+            self.redisMessaging.sendMetric(serviceName='diameter', metricName='prom_diam_auth_event_count',
+                                           metricType='counter', metricAction='inc',
+                                           metricValue=1.0,
+                                           metricLabels={
+                                               "diameter_application_id": 16777265,
+                                               "diameter_cmd_code": 303,
+                                               "event": "Unknown User",
+                                               "imsi_prefix": str(imsi[0:6])},
+                                           metricHelp='Diameter Authentication related Counters',
+                                           metricExpiry=60,
+                                           usePrefix=True,
+                                           prefixHostname=self.hostname,
+                                           prefixServiceName='metric')
+            experimental_result = self.generate_avp(298, 40, self.int_to_hex(5001,
+                                                                             4))  # Result Code (DIAMETER ERROR - User Unknown)
+            experimental_result = experimental_result + self.generate_vendor_avp(266, 40, 10415, "")
+            # Experimental Result (297)
+            avp += self.generate_avp(297, 40, experimental_result)
+            response = self.generate_diameter_packet("01", "40", 303, 16777216,
+                                                     packet_vars['hop-by-hop-identifier'],
+                                                     packet_vars['end-to-end-identifier'],
+                                                     avp)  # Generate Diameter packet
+            return response
+
+        self.logTool.log(service='HSS', level='debug', message="Got subscriber data for MAA OK",
+                         redisClient=self.redisMessaging)
+
+        mcc, mnc = imsi[0:3], imsi[3:5]
+        plmn = self.EncodePLMN(mcc, mnc)
+
+        # Determine if SQN Resync is required & auth type to use
+        for sub_avp_612 in self.get_avp_data(avps, 612)[0]:
+            if sub_avp_612['avp_code'] == 610:
+                self.logTool.log(service='HSS', level='debug',
+                                 message="SQN in HSS is out of sync - Performing resync",
+                                 redisClient=self.redisMessaging)
+                auts = str(sub_avp_612['misc_data'])[32:]
+                rand = str(sub_avp_612['misc_data'])[:32]
+                rand = binascii.unhexlify(rand)
+                self.database.Get_Vectors_AuC(subscriber_details['auc_id'], "sqn_resync", auts=auts, rand=rand)
+                self.logTool.log(service='HSS', level='debug', message="Resynced SQN in DB",
+                                 redisClient=self.redisMessaging)
+                self.redisMessaging.sendMetric(serviceName='diameter', metricName='prom_diam_auth_event_count',
+                                               metricType='counter', metricAction='inc',
+                                               metricValue=1.0,
+                                               metricLabels={
+                                                   "diameter_application_id": 16777216,
+                                                   "diameter_cmd_code": 302,
+                                                   "event": "ReAuth",
+                                                   "imsi_prefix": str(imsi[0:6])},
+                                               metricHelp='Diameter Authentication related Counters',
+                                               metricExpiry=60,
+                                               usePrefix=True,
+                                               prefixHostname=self.hostname,
+                                               prefixServiceName='metric')
+            if sub_avp_612['avp_code'] == 608:
+                self.logTool.log(service='HSS', level='debug',
+                                 message="Auth mechansim requested: " + str(sub_avp_612['misc_data']),
+                                 redisClient=self.redisMessaging)
+                auth_scheme = binascii.unhexlify(sub_avp_612['misc_data']).decode('utf-8')
+                self.logTool.log(service='HSS', level='debug',
+                                 message="Auth mechansim requested: " + str(auth_scheme),
+                                 redisClient=self.redisMessaging)
+
+        self.logTool.log(service='HSS', level='debug', message="IMSI is " + str(imsi),
+                         redisClient=self.redisMessaging)
+        avp += self.generate_avp(1, 40, str(binascii.hexlify(str.encode(imsi), 'ascii')))  # Username
+
+        # Determine Vectors to Generate
+        if auth_scheme != "EAP-AKA":
+            self.logTool.log(service='HSS', level='debug', message="Generating EAP-AKA Auth Challenge",
+                             redisClient=self.redisMessaging)
+            vector_dict = self.database.Get_Vectors_AuC(subscriber_details['auc_id'], "sip_auth", plmn=plmn)
+
+            # diameter.3GPP-SIP-Auth-Data-Items:
+
+            # AVP Code: 613 3GPP-SIP-Item-Number
+            avp_SIP_Item_Number = self.generate_vendor_avp(613, "c0", 10415, format(int(0), "x").zfill(8))
+            # AVP Code: 608 3GPP-SIP-Authentication-Scheme
+            avp_SIP_Authentication_Scheme = self.generate_vendor_avp(608, "c0", 10415,
+                                                                     str(binascii.hexlify(b'EAP-AKA'),
+                                                                         'ascii'))
+            # AVP Code: 609 3GPP-SIP-Authenticate
+            avp_SIP_Authenticate = self.generate_vendor_avp(609, "c0", 10415,
+                                                            str(binascii.hexlify(vector_dict['SIP_Authenticate']),
+                                                                'ascii'))  # RAND + AUTN
+            # AVP Code: 610 3GPP-SIP-Authorization
+            avp_SIP_Authorization = self.generate_vendor_avp(610, "c0", 10415,
+                                                             str(binascii.hexlify(vector_dict['xres']),
+                                                                 'ascii'))  # XRES
+            # AVP Code: 625 Confidentiality-Key
+            avp_Confidentialility_Key = self.generate_vendor_avp(625, "c0", 10415,
+                                                                 str(binascii.hexlify(vector_dict['ck']),
+                                                                     'ascii'))  # CK
+            # AVP Code: 626 Integrity-Key
+            avp_Integrity_Key = self.generate_vendor_avp(626, "c0", 10415,
+                                                         str(binascii.hexlify(vector_dict['ik']), 'ascii'))  # IK
+
+            auth_data_item = avp_SIP_Item_Number + avp_SIP_Authentication_Scheme + avp_SIP_Authenticate + avp_SIP_Authorization + avp_Confidentialility_Key + avp_Integrity_Key
+        else:
+            experimental_result = self.generate_avp(298, 40, self.int_to_hex(5012,
+                                                                             4))  # Result Code (DIAMETER ERROR - Unable to comply)
+            experimental_result = experimental_result + self.generate_vendor_avp(266, 40, 10415, "")
+            # Experimental Result (297)
+            avp += self.generate_avp(297, 40, experimental_result)
+            response = self.generate_diameter_packet("01", "40", 303, 16777216,
+                                                     packet_vars['hop-by-hop-identifier'],
+                                                     packet_vars['end-to-end-identifier'],
+                                                     avp)  # Generate Diameter packet
+            return response
+        avp += self.generate_vendor_avp(612, "c0", 10415, auth_data_item)  # 3GPP-SIP-Auth-Data-Item
+
+        avp += self.generate_vendor_avp(607, "c0", 10415, "00000001")  # 3GPP-SIP-Number-Auth-Items
+
+        avp += self.generate_avp(268, 40, "000007d1")  # DIAMETER_SUCCESS
+
+        response = self.generate_diameter_packet("01", "40", 303, 16777216, packet_vars['hop-by-hop-identifier'],
+                                                 packet_vars['end-to-end-identifier'],
+                                                 avp)  # Generate Diameter packet
         return response
 
     #Generate a Generic error handler with Result Code as input
