@@ -2941,6 +2941,8 @@ class Diameter:
         response = self.generate_diameter_packet("01", "40", 303, 16777265, packet_vars['hop-by-hop-identifier'],
                                                  packet_vars['end-to-end-identifier'],
                                                  avp)  # Generate Diameter packet
+        self.logTool.log(service='HSS', level='debug', message="response is " + str(response),
+                        redisClient=self.redisMessaging)
         return response
 
     #Generate a Generic error handler with Result Code as input
