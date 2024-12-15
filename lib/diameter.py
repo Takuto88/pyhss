@@ -2637,19 +2637,20 @@ class Diameter:
         except:  # If we don't have a record-route set, we'll send the response to the OriginHost
             remote_peer = OriginHost
         self.logTool.log(service='HSS', level='debug',
-                         message="[diameter.py] [Answer_16777216_301] [SAR] Remote Peer is " + str(remote_peer),
+                         message="[diameter.py] [Answer_16777265_301] [SAR] Remote Peer is " + str(remote_peer),
                          redisClient=self.redisMessaging)
 
         try:
             self.logTool.log(service='HSS', level='debug', message="Checking if username present",
                              redisClient=self.redisMessaging)
-            username = self.get_avp_data(avps, 601)[0]
+            username = self.get_avp_data(avps, 1)[0]
+            username = binascii.unhexlify(username).decode('utf-8')
             imsi = username
         except Exception as E:
             self.logTool.log(service='HSS', level='debug', message="Threw Exception: " + str(E),
                              redisClient=self.redisMessaging)
             self.logTool.log(service='HSS', level='debug',
-                             message=f"No known MSISDN or IMSI in Answer_16777216_301()",
+                             message=f"No known MSISDN or IMSI in Answer_16777265_301()",
                              redisClient=self.redisMessaging)
             result_code = 5005
             # Experimental Result AVP
@@ -2658,7 +2659,7 @@ class Diameter:
             avp_experimental_result += self.generate_avp(298, 40, self.int_to_hex(result_code,
                                                                                   4))  # AVP Experimental-Result-Code
             avp += self.generate_avp(297, 40, avp_experimental_result)  # AVP Experimental-Result(297)
-            response = self.generate_diameter_packet("01", "40", 301, 16777217,
+            response = self.generate_diameter_packet("01", "40", 301, 16777265,
                                                      packet_vars['hop-by-hop-identifier'],
                                                      packet_vars['end-to-end-identifier'],
                                                      avp)  # Generate Diameter packet
