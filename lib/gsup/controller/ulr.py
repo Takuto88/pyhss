@@ -20,7 +20,7 @@
 """
 
 import traceback
-from datetime import datetime
+import time
 from enum import IntEnum
 from typing import Callable, List, Dict, Optional
 from osmocom.gsup.message import GsupMessage, MsgType
@@ -57,7 +57,7 @@ class ULRTransaction:
         self.__state = self.__TransactionState.BEGIN_STATE_INITIAL
         self.__old_peer = None
         self.__timeout_seconds = 10
-        self.__started_at = datetime.now()
+        self.__started_at = time.monotonic()
 
     async def begin(self):
         if self.__state != self.__TransactionState.BEGIN_STATE_INITIAL:
@@ -85,7 +85,7 @@ class ULRTransaction:
         return self.__state == self.__TransactionState.END_STATE_CANCEL_LOCATION_SENT
 
     def __is_timed_out(self):
-        return (datetime.now() - self.__started_at).seconds > self.__timeout_seconds
+        return (time.monotonic() - self.__started_at).seconds > self.__timeout_seconds
 
     async def __send_isd_request(self):
         request_builder = (GsupMessageBuilder.new()
