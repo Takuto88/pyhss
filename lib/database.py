@@ -1608,7 +1608,7 @@ class Database:
             return vector_dict
 
         elif action == "2g3g":
-            # Mask first bit of AMF
+            # Mask first bit of AMF, the highest bit must be set for E-UTRAN, but not for GERAN/UTRAN
             key_data['amf'] = '0' + key_data['amf'][1:]
             vect = S6a_crypt.generate_2g3g_vector(key_data['ki'], key_data['opc'], key_data['amf'], int(key_data['sqn']), int(key_data['algo']))
             vector_list = []
