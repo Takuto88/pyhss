@@ -89,6 +89,7 @@ class ULRTransaction:
         return (time.monotonic() - self.__started_at).seconds > self.__timeout_seconds
 
     async def __send_isd_request(self):
+        # TODO: msisdn can be None
         request_builder = (GsupMessageBuilder.new()
                            .with_msg_type(MsgType.INSERT_DATA_REQUEST)
                            .with_ie('imsi', self.__subscriber_info.imsi)
