@@ -17,7 +17,7 @@ import uuid
 import socket
 import pprint
 import S6a_crypt
-from gsup.protocol.ipa_peer import IPAPeerRole
+from common import CoreNetworkDomain
 from messaging import RedisMessaging
 import yaml
 import json
@@ -26,7 +26,6 @@ import traceback
 
 with open("../config.yaml", 'r') as stream:
     config = (yaml.safe_load(stream))
-
 
 Base = declarative_base()
 class APN(Base):
@@ -1686,7 +1685,7 @@ class Database:
 
         return
 
-    def update_gsup(self, imsi: str, role: IPAPeerRole, new_id: Optional[str]) -> str:
+    def update_gsup(self, imsi: str, cn_domain: CoreNetworkDomain, new_id: Optional[str]) -> str:
         self.logTool.log(service='Database', level='debug', message=f"Updating GSUP record {role.name} for IMSI: {imsi} with new ID: {new_id}", redisClient=self.redisMessaging)
         Session = sessionmaker(bind=self.engine)
         session = Session()
@@ -1694,10 +1693,12 @@ class Database:
         try:
             subscriber = session.query(SUBSCRIBER).filter_by(imsi=imsi).one()
             field = None
-            if role == IPAPeerRole.SGSN:
+            if cn_domain == CoreNetworkDomain.PS:
                 field = "gsup_serving_sgsn"
-            elif role == IPAPeerRole.MSC:
+            elif cn_domain == CoreNetworkDomain.CS:
                 field = "gsup_serving_msc"
+            else:
+                raise ValueError(f"Invalid CoreNetworkDomain {cn_domain}")
 
             old_id = getattr(subscriber, field)
             setattr(subscriber, field, new_id)

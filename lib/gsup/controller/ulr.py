@@ -25,10 +25,11 @@ from enum import IntEnum
 from typing import Callable, List, Dict, Optional
 from osmocom.gsup.message import GsupMessage, MsgType
 
+from common import CoreNetworkDomain
 from database import Database
 from gsup.controller.abstract_controller import GsupController
 from gsup.protocol.gsup_msg import GsupMessageBuilder, GsupMessageUtil
-from gsup.protocol.ipa_peer import IPAPeer, IPAPeerRole
+from gsup.protocol.ipa_peer import IPAPeer
 from logtool import LogTool
 
 
@@ -138,8 +139,8 @@ class ULRController(GsupController):
         self.__ulr_transactions = ulr_transactions
         self.__all_ipa_peers = all_peers
 
-    def __update_subscriber(self, peer: IPAPeer, imsi: str) -> Optional[IPAPeer]:
-        old_id = self._database.update_gsup(imsi, peer.role, peer.primary_id)
+    def __update_subscriber(self, peer: IPAPeer, imsi: str, cn_domain: CoreNetworkDomain) -> Optional[IPAPeer]:
+        old_id = self._database.update_gsup(imsi, cn_domain, peer.primary_id)
 
         if old_id is None:
             return None
