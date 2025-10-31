@@ -16,6 +16,7 @@ from diameter import Diameter
 from messaging import RedisMessaging
 import database
 import yaml
+from gsup.event_publisher import GsupEventPublisher
 
 with open("../config.yaml", 'r') as stream:
     config = (yaml.safe_load(stream))
@@ -38,6 +39,8 @@ redisUnixSocketPath = config.get('redis', {}).get('unixSocketPath', '/var/run/re
 insecureAuc = config.get('api', {}).get('enable_insecure_auc', False)
 
 redisMessaging = RedisMessaging(host=redisHost, port=redisPort, useUnixSocket=redisUseUnixSocket, unixSocketPath=redisUnixSocketPath)
+
+gsupEventPublisher = GsupEventPublisher(redisMessaging)
 
 logTool = LogTool(config)
 
@@ -558,7 +561,41 @@ class PyHSS_SUBSCRIBER_Get(Resource):
             print("JSON Data sent: " + str(json_data))
             args = parser.parse_args()
             operation_id = args.get('operation_id', None)
+
+            # Get existing subscriber data before update to detect MSISDN changes
+            existing_subscriber = databaseClient.GetObj(SUBSCRIBER, subscriber_id)
+            existing_msisdn = existing_subscriber.get('msisdn', '') if existing_subscriber else ''
+
             data = databaseClient.UpdateObj(SUBSCRIBER, json_data, subscriber_id, False, operation_id)
+
+            # Check if MSISDN has changed and publish GSUP event
+            if 'msisdn' in json_data and json_data['msisdn'] != existing_msisdn:
+                print(f"MSISDN changed from {existing_msisdn} to {json_data['msisdn']}, publishing GSUP event")
+                try:
+                    # Get updated subscriber data with all fields
+                    updated_subscriber = databaseClient.GetObj(SUBSCRIBER, subscriber_id)
+
+                    # Get APNs for the subscriber
+                    subscriber_apns = []
+                    if 'apn' in updated_subscriber and updated_subscriber['apn']:
+                        # Get APN details
+                        try:
+                            apn_data = databaseClient.GetObj(APN, updated_subscriber['apn'])
+                            if apn_data:
+                                subscriber_apns = [{'apn': apn_data.get('apn', '')}]
+                        except:
+                            pass
+
+                    # Publish subscriber updated event
+                    gsupEventPublisher.publish_subscriber_updated(
+                        imsi=updated_subscriber.get('imsi', ''),
+                        msisdn=updated_subscriber.get('msisdn', ''),
+                        apns=subscriber_apns,
+                        disabled=not updated_subscriber.get('enabled', True)
+                    )
+                    print("GSUP subscriber updated event published successfully")
+                except Exception as e:
+                    print(f"Failed to publish GSUP subscriber updated event: {e}")
 
             #If the "enabled" flag on the subscriber is now disabled, trigger a CLR
             if 'enabled' in json_data and json_data['enabled'] == False:
