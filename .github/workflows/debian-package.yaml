@@ -53,4 +53,3 @@ jobs:
           tag: ${{ github.ref_name }}
           artifacts: debian/artifacts/*.deb
           bodyFile: 'CHANGELOG.md'
-          token: '${{ secrets.GITHUB_TOKEN }}'
